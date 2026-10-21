@@ -136,6 +136,28 @@ apply to the rescaled inputs; pass `normalize=False` to work in raw units.
 For a consequent that is not a polynomial at all, subclass `Consequent` and implement
 `forward(X: (batch, n_inputs)) -> (batch,)`.
 
+## Visualisation
+
+Sets, variables and systems can draw themselves with matplotlib
+(`pip install "torch-fis[plot]"`). Each method returns the matplotlib axes (or figure),
+and accepts `ax=` to draw into an existing one.
+
+```python
+TriangularMF(0, 5, 10).plot()            # one membership function
+service.plot()                           # every term of a variable
+service.plot(value=6.5)                  # ... with the degrees reached at 6.5
+
+fis.plot_inference({'Service': 6.5, 'Food': 9.8})   # rule viewer, Mamdani or TSK
+fis.plot_surface()                                  # output over the first two inputs
+fis.plot_surface('Service', fixed={'Food': 9.0})    # a 1-D slice
+```
+
+`plot_inference` is the graphical counterpart of `explain()`: one row per rule
+showing each antecedent set cut at the degree the input reaches, the firing strength,
+and the implied output set (or, for TSK, the rule's crisp value); the last row shows the
+aggregated set and the crisp output. Rule bases larger than 12 rules show only the rules
+that fire, unless you pass `active_only=False`.
+
 ## Systems as JSON
 
 A system can also be described as plain data and built with `build_system`; the
@@ -225,6 +247,7 @@ membership parameters are still moving.
 - **Defuzzification**: Centroid, Bisector, Mean of Maximum.
 - **Differentiable**: end to end, over membership parameters and TSK coefficients alike.
 - **GPU-ready**: `nn.Module` throughout; `.to(device)` moves the whole system.
+- **Visualisation**: `.plot()` on sets and variables; `plot_inference` and `plot_surface` on systems.
 
 ## Quadrotor environment
 

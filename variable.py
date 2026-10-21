@@ -31,5 +31,13 @@ class FuzzyVariable(nn.Module):
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         return self.fuzzify(x)
 
+    def plot(self, value=None, ax=None, **kwargs):
+        """Draw every term; optionally mark a crisp ``value`` and its degrees.
+
+        See :func:`fuzzy_torch.viz.plot_variable`. Needs matplotlib.
+        """
+        from .viz import plot_variable
+        return plot_variable(self, value=value, ax=ax, **kwargs)
+
     def __repr__(self):
         return f"FuzzyVariable(name='{self.name}', range=[{self.range_min}, {self.range_max}], terms={list(self.terms.keys())})"

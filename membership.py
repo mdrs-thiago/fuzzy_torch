@@ -35,6 +35,14 @@ class MembershipFunction(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
 
+    def plot(self, x=None, ax=None, **kwargs):
+        """Draw this function; ``x`` is a ``(lo, hi)`` range or a tensor of points.
+
+        See :func:`fuzzy_torch.viz.plot_membership`. Needs matplotlib.
+        """
+        from .viz import plot_membership
+        return plot_membership(self, x=x, ax=ax, **kwargs)
+
 
 class TriangularMF(MembershipFunction):
     def __init__(self, a, b, c):

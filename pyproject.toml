@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=7"]
+test = ["pytest>=7", "matplotlib>=3.7"]
 # Control benchmark environments. gymnasium and pygame-ce both ship pure-Python or
 # cp314 wheels, so this installs on current Pythons without a compiler.
 envs = [
@@ -37,6 +37,8 @@ envs = [
     "numpy>=1.21",
     "pygame-ce>=2.5",
 ]
+# Plotting of membership functions, variables, inference and surfaces.
+plot = ["matplotlib>=3.7"]
 # 3D rendering and the independent physics cross-check. MuJoCo is the preferred
 # renderer and the validation engine; it ships cp314 wheels and is Apache-2.0.
 # Kept out of [envs] so headless benchmark runs need not pull a renderer.

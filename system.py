@@ -349,6 +349,25 @@ class FuzzyModule(nn.Module):
         out_val = out.item() if out.numel() == 1 else out[0].item()
         print(f"\nFinal Output ({self.output_variable.name}): {out_val:.4f}")
 
+    # -------------------------------------------------------- visualisation
+
+    def plot_inference(self, x: Dict[str, torch.Tensor], **kwargs):
+        """Rule-viewer figure of the inference for the first batch item.
+
+        The graphical counterpart of :meth:`explain`. See
+        :func:`fuzzy_torch.viz.plot_inference`. Needs matplotlib.
+        """
+        from .viz import plot_inference
+        return plot_inference(self, x, **kwargs)
+
+    def plot_surface(self, x: Optional[str] = None, y: Optional[str] = None, **kwargs):
+        """Output over one or two inputs (curve or contour), others held fixed.
+
+        See :func:`fuzzy_torch.viz.plot_surface`. Needs matplotlib.
+        """
+        from .viz import plot_surface
+        return plot_surface(self, x, y, **kwargs)
+
 
 class MamdaniSystem(FuzzyModule):
     """:class:`FuzzyModule` restricted to Mamdani rules; fails loudly otherwise."""
