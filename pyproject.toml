@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fuzzy-torch"
-version = "0.1.0"
+version = "0.2.0"
 description = "A differentiable Fuzzy Inference System (FIS) library built on PyTorch"
 readme = "README.md"
 license = {text = "MIT"}
@@ -12,7 +12,7 @@ requires-python = ">=3.9"
 authors = [
     {name = "Thiago Medeiros", email = "mdrs.thiago@gmail.com"}
 ]
-keywords = ["fuzzy", "inference", "pytorch", "mamdani", "membership-functions"]
+keywords = ["fuzzy", "inference", "pytorch", "mamdani", "sugeno", "tsk", "anfis", "membership-functions"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -28,9 +28,49 @@ dependencies = [
     "torch>=1.12",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=7"]
+# Control benchmark environments. gymnasium and pygame-ce both ship pure-Python or
+# cp314 wheels, so this installs on current Pythons without a compiler.
+envs = [
+    "gymnasium>=1.0",
+    "numpy>=1.21",
+    "pygame-ce>=2.5",
+]
+# 3D rendering and the independent physics cross-check. MuJoCo is the preferred
+# renderer and the validation engine; it ships cp314 wheels and is Apache-2.0.
+# Kept out of [envs] so headless benchmark runs need not pull a renderer.
+viz = [
+    "fuzzy-torch[envs]",
+    "mujoco>=3.2",
+    "matplotlib>=3.7",
+]
+# RL baselines are opt-in: stable-baselines3 is heavy and only needed to reproduce
+# the RL comparison, not to use the environments.
+rl = [
+    "fuzzy-torch[envs]",
+    "stable-baselines3>=2.9",
+]
+
 [project.urls]
 Homepage = "https://github.com/mdrs-thiago/fuzzy_torch"
 Issues = "https://github.com/mdrs-thiago/fuzzy_torch/issues"
 
-[tool.setuptools.packages.find]
-include = ["fuzzy_torch*"]
+# Flat layout: the package modules live at the repo root, and the repo is consumed
+# as a git submodule checked out as `fuzzy_torch/`. `packages.find` finds nothing
+# here (there is no fuzzy_torch/ subdirectory), so map the root explicitly.
+[tool.setuptools]
+packages = [
+    "fuzzy_torch",
+    "fuzzy_torch.envs",
+    "fuzzy_torch.envs.core",
+    "fuzzy_torch.envs.plants",
+    "fuzzy_torch.envs.assets",
+    "fuzzy_torch.envs.controllers",
+]
+
+[tool.setuptools.package-dir]
+fuzzy_torch = "."
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

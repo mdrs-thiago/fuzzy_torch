@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 from abc import ABC, abstractmethod
 
 class TNorm(ABC):
@@ -38,4 +37,5 @@ class ProbabilisticSum(SNorm):
 
 class Lukasiewicz(TNorm):
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        return torch.max(torch.tensor(0.0, device=x.device), x + y - 1)
+        # clamp rather than max against a fresh tensor: no device/dtype juggling.
+        return torch.clamp(x + y - 1, min=0.0)

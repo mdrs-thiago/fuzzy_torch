@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fuzzy Grand Prix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%2307111d%27/%3E%3Cpath d=%27M3 13L8 3l5 10z%27 fill=%27%23d8ff38%27/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <p class="eyebrow">FUZZY TORCH · TIME TRIAL CHAMPIONSHIP</p>
+    <h1>GRAND PRIX <i>///</i></h1>
+  </div>
+  <div class="ticker" id="ticker"><span class="dot"></span><span id="ticker-text">Connecting…</span></div>
+  <div class="actions">
+    <div class="stat"><b id="stat-drivers">0</b><span>drivers</span></div>
+    <div class="stat"><b id="stat-runs">0</b><span>runs</span></div>
+    <button id="open-submit" class="cta">ENTER THE RACE</button>
+  </div>
+</header>
+
+<section class="broadcast-wrap" aria-label="Onboard with the lap-record holders">
+  <div class="section-head">
+    <h2>Onboard <i class="live-tag">LIVE</i></h2>
+    <span>The lap-record holder on each circuit · click a screen for the full replay</span>
+  </div>
+  <div class="broadcast" id="broadcast"></div>
+</section>
+
+<main class="layout">
+  <section>
+    <div class="section-head">
+      <h2>Starting grid</h2>
+      <span>Ranked by total time over all three circuits · click a kart for replay and fuzzy setup</span>
+    </div>
+    <div id="grid" class="grid"></div>
+  </section>
+  <aside class="side">
+    <div class="panel">
+      <h3>Standings</h3>
+      <div class="table-head"><span>#</span><span>Driver</span><span>OVL</span><span>CHI</span><span>TEC</span><span>Total</span></div>
+      <div id="standings"></div>
+    </div>
+    <div class="panel"><h3>Pit lane</h3><div id="queue"></div></div>
+    <div class="panel"><h3>Latest runs</h3><div id="recent"></div></div>
+  </aside>
+</main>
+
+<dialog id="submit-dialog" class="sheet">
+  <form method="dialog" class="sheet-head">
+    <div><p class="eyebrow">NEW ENTRY</p><h2>Enter the race</h2></div>
+    <button class="close" aria-label="Close">×</button>
+  </form>
+  <div id="submit-form">
+    <label class="field"><span>Your name</span>
+      <input id="driver-name" maxlength="24" autocomplete="nickname" placeholder="e.g. Ana Souza">
+    </label>
+    <div class="field">
+      <div class="field-row">
+        <span>Driver JSON</span>
+        <div class="mini-actions">
+          <button type="button" id="load-example" class="ghost">Load example</button>
+          <label class="ghost file">Upload .json<input id="upload" type="file" accept=".json,application/json"></label>
+          <button type="button" id="format-json" class="ghost">Format</button>
+        </div>
+      </div>
+      <textarea id="driver-json" spellcheck="false" placeholder='{ "throttle": { … }, "steering": { … } }'></textarea>
+      <p class="hint" id="json-hint">Two fuzzy systems, <code>throttle</code> and <code>steering</code>. Inputs: <code>cross_track_error</code>, <code>heading_error</code>, <code>speed</code>, <code>yaw_rate</code>, <code>lookahead_curvature</code>, <code>curve</code>, <code>progress</code>.</p>
+    </div>
+    <div id="submit-error" class="error" hidden></div>
+    <div class="sheet-foot">
+      <span class="hint">Each entry races oval, chicane and technical once. Leave the track and it's a DNF.</span>
+      <button id="submit" class="cta">SUBMIT TO RACE CONTROL</button>
+    </div>
+  </div>
+  <div id="submit-progress" hidden></div>
+</dialog>
+
+<dialog id="entry-dialog" class="sheet wide">
+  <form method="dialog" class="sheet-head">
+    <div id="entry-head"></div>
+    <button class="close" aria-label="Close">×</button>
+  </form>
+  <nav class="tabs" id="entry-tabs">
+    <button data-tab="replay" class="on">Replay</button>
+    <button data-tab="setup">Fuzzy setup</button>
+    <button data-tab="json">JSON</button>
+  </nav>
+  <div id="entry-body"></div>
+</dialog>
+
+<div id="toasts" aria-live="polite"></div>
+<script src="onboard.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

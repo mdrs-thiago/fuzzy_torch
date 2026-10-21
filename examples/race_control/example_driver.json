@@ -1,0 +1,84 @@
+{
+  "throttle": {
+    "type": "mamdani",
+    "inputs": {
+      "curve": {
+        "range": [0.0, 1.5],
+        "terms": {
+          "straight": ["tri", 0.0, 0.0, 0.18],
+          "medium": ["tri", 0.08, 0.32, 0.65],
+          "tight": ["tri", 0.35, 1.5, 1.5]
+        }
+      },
+      "speed": {
+        "range": [0.0, 4.8],
+        "terms": {
+          "slow": ["tri", 0.0, 0.0, 1.8],
+          "medium": ["tri", 0.8, 2.2, 3.6],
+          "fast": ["tri", 2.5, 4.8, 4.8]
+        }
+      }
+    },
+    "output": {
+      "range": [0.0, 1.0],
+      "terms": {
+        "brake": ["tri", 0.0, 0.0, 0.45],
+        "cruise": ["tri", 0.2, 0.55, 0.85],
+        "full": ["tri", 0.6, 1.0, 1.0]
+      }
+    },
+    "rules": [
+      {"if": {"curve": "straight", "speed": "slow"}, "then": "full"},
+      {"if": {"curve": "straight", "speed": "medium"}, "then": "full"},
+      {"if": {"curve": "straight", "speed": "fast"}, "then": "cruise"},
+      {"if": {"curve": "medium", "speed": "slow"}, "then": "full"},
+      {"if": {"curve": "medium", "speed": "medium"}, "then": "cruise"},
+      {"if": {"curve": "medium", "speed": "fast"}, "then": "brake"},
+      {"if": {"curve": "tight", "speed": "slow"}, "then": "cruise"},
+      {"if": {"curve": "tight", "speed": "medium"}, "then": "brake"},
+      {"if": {"curve": "tight", "speed": "fast"}, "then": "brake"}
+    ],
+    "default": 0.0
+  },
+  "steering": {
+    "type": "mamdani",
+    "inputs": {
+      "cross_track_error": {
+        "range": [-1.0, 1.0],
+        "terms": {
+          "right": ["trap", -1.0, -1.0, -0.28, 0.0],
+          "centre": ["tri", -0.28, 0.0, 0.28],
+          "left": ["trap", 0.0, 0.28, 1.0, 1.0]
+        }
+      },
+      "heading_error": {
+        "range": [-3.1416, 3.1416],
+        "terms": {
+          "right": ["trap", -3.1416, -3.1416, -0.38, 0.0],
+          "centre": ["tri", -0.38, 0.0, 0.38],
+          "left": ["trap", 0.0, 0.38, 3.1416, 3.1416]
+        }
+      }
+    },
+    "output": {
+      "range": [-1.0, 1.0],
+      "terms": {
+        "right": ["trap", -1.0, -1.0, -0.72, 0.0],
+        "centre": ["tri", -0.72, 0.0, 0.72],
+        "left": ["trap", 0.0, 0.72, 1.0, 1.0]
+      }
+    },
+    "rules": [
+      {"if": {"cross_track_error": "right", "heading_error": "right"}, "then": "centre"},
+      {"if": {"cross_track_error": "right", "heading_error": "centre"}, "then": "left"},
+      {"if": {"cross_track_error": "right", "heading_error": "left"}, "then": "left"},
+      {"if": {"cross_track_error": "centre", "heading_error": "right"}, "then": "right"},
+      {"if": {"cross_track_error": "centre", "heading_error": "centre"}, "then": "centre"},
+      {"if": {"cross_track_error": "centre", "heading_error": "left"}, "then": "left"},
+      {"if": {"cross_track_error": "left", "heading_error": "right"}, "then": "right"},
+      {"if": {"cross_track_error": "left", "heading_error": "centre"}, "then": "right"},
+      {"if": {"cross_track_error": "left", "heading_error": "left"}, "then": "centre"}
+    ],
+    "default": 0.0
+  }
+}

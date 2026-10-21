@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+out*/
+.venv/
+venv/
+examples/race_control/leaderboard.json
+examples/race_control/leaderboard.tmp
+examples/race_control/results.json

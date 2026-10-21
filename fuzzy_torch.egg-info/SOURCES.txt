@@ -1,8 +1,0 @@
-LICENSE
-README.md
-pyproject.toml
-fuzzy_torch.egg-info/PKG-INFO
-fuzzy_torch.egg-info/SOURCES.txt
-fuzzy_torch.egg-info/dependency_links.txt
-fuzzy_torch.egg-info/requires.txt
-fuzzy_torch.egg-info/top_level.txt
