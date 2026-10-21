@@ -4,7 +4,7 @@ Batched, differentiable torch dynamics behind the standard Gymnasium API, so the
 same plant serves RL baselines, GPU parameter sweeps and gradient-based controller
 tuning.
 
-Install with ``pip install 'fuzzy_torch[envs]'``.
+Install with ``pip install 'torch-fis[envs]'``.
 """
 from .core.integrate import INTEGRATORS, ORDERS, euler_step, rk4_step, rollout
 from .core.metrics import (

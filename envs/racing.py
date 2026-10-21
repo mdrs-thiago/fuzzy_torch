@@ -19,7 +19,7 @@ try:
     import gymnasium as gym
     from gymnasium import spaces
 except ImportError as exc:  # pragma: no cover
-    raise ImportError("RacingEnv needs gymnasium; install with: pip install 'fuzzy_torch[envs]'") from exc
+    raise ImportError("RacingEnv needs gymnasium; install with: pip install 'torch-fis[envs]'") from exc
 
 from .core.integrate import get_integrator
 from .core.modes import ControlMode
@@ -451,7 +451,7 @@ class _RaceRenderer:
         try:
             import pygame
         except ImportError as exc:  # pragma: no cover
-            raise ImportError("live racing rendering needs pygame-ce; install fuzzy_torch[envs]") from exc
+            raise ImportError("live racing rendering needs pygame-ce; install 'torch-fis[envs]'") from exc
         self.pygame, self.track, self.mode, self.dt = pygame, track, mode, dt
         if mode == 'rgb_array' and not os.environ.get('SDL_VIDEODRIVER'):
             os.environ.setdefault('SDL_VIDEODRIVER', 'dummy')

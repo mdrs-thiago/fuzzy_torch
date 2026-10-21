@@ -18,7 +18,7 @@ import pytest
 import torch
 
 mujoco = pytest.importorskip("mujoco",
-                             reason="cross-validation needs mujoco (pip install 'fuzzy_torch[viz]')")
+                             reason="cross-validation needs mujoco (pip install 'torch-fis[viz]')")
 
 from fuzzy_torch.envs import CranePlant, rk4_step  # noqa: E402
 from fuzzy_torch.envs.assets import crane_mjcf  # noqa: E402

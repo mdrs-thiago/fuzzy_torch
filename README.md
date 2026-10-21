@@ -10,6 +10,20 @@ the GPU with `.to(device)` like any other `nn.Module`.
 ## Installation
 
 ```bash
+pip install torch-fis              # core library
+pip install "torch-fis[envs]"      # + Gymnasium control environments
+pip install "torch-fis[viz]"       # + MuJoCo rendering and matplotlib
+```
+
+The distribution is called `torch-fis`; the import name is `fuzzy_torch`:
+
+```python
+import fuzzy_torch
+```
+
+The latest development version installs straight from GitHub:
+
+```bash
 pip install git+https://github.com/mdrs-thiago/fuzzy_torch.git
 ```
 

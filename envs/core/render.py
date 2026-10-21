@@ -42,7 +42,7 @@ def _pygame():
         import pygame
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
-            "the pygame renderer needs pygame-ce; install with: pip install 'fuzzy_torch[envs]'"
+            "the pygame renderer needs pygame-ce; install with: pip install 'torch-fis[envs]'"
         ) from exc
     return pygame
 
@@ -322,7 +322,7 @@ def mujoco_available(plant) -> Tuple[bool, str]:
     try:
         import mujoco  # noqa: F401
     except ImportError:
-        return False, "mujoco is not installed (pip install 'fuzzy_torch[viz]')"
+        return False, "mujoco is not installed (pip install 'torch-fis[viz]')"
     try:
         # Obtaining a context is the part that fails headless without EGL/OSMesa,
         # and it fails at construction rather than at import.

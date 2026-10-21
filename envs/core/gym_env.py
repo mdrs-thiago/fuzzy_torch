@@ -20,7 +20,7 @@ try:
     from gymnasium import spaces
 except ImportError as exc:  # pragma: no cover
     raise ImportError(
-        "fuzzy_torch.envs needs gymnasium; install with: pip install 'fuzzy_torch[envs]'"
+        "fuzzy_torch.envs needs gymnasium; install with: pip install 'torch-fis[envs]'"
     ) from exc
 
 from .integrate import get_integrator
