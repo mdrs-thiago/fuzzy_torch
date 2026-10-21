@@ -323,6 +323,8 @@ def mujoco_available(plant) -> Tuple[bool, str]:
         import mujoco  # noqa: F401
     except ImportError:
         return False, "mujoco is not installed (pip install 'torch-fis[viz]')"
+    except Exception as exc:                      # noqa: BLE001 - e.g. MUJOCO_GL=egl, no EGL
+        return False, f"mujoco failed to load ({type(exc).__name__}: {exc})"
     try:
         # Obtaining a context is the part that fails headless without EGL/OSMesa,
         # and it fails at construction rather than at import.

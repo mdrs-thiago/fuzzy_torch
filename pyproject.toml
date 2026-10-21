@@ -36,6 +36,7 @@ envs = [
     "gymnasium>=1.0",
     "numpy>=1.21",
     "pygame-ce>=2.5",
+    "pillow>=9",          # GIF encoding for envs.record()
 ]
 # Plotting of membership functions, variables, inference and surfaces.
 plot = ["matplotlib>=3.7"]

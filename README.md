@@ -249,6 +249,25 @@ membership parameters are still moving.
 - **GPU-ready**: `nn.Module` throughout; `.to(device)` moves the whole system.
 - **Visualisation**: `.plot()` on sets and variables; `plot_inference` and `plot_surface` on systems.
 
+## Watching simulations in a notebook
+
+`record` runs one episode headlessly and returns a video that plays inline in Jupyter,
+VS Code or Colab; `compare` shows several side by side. It renders with MuJoCo (3-D)
+when an OpenGL context is available and falls back to pygame (2-D) otherwise.
+
+```python
+from fuzzy_torch.envs import RacingEnv, record, compare
+from fuzzy_torch.envs.controllers import FuzzyRaceDriver
+
+video = record(RacingEnv('chicane', render_mode='rgb_array'), FuzzyRaceDriver())
+video                       # last line of a cell -> animated playback
+video.info['lap_time']      # every info dict, observation and raw state is kept
+video.save('lap.gif')       # or .webp
+```
+
+Make the environment with `render_mode='human'` instead and the same call opens a live
+window. `examples/notebooks/02_fuzzy_control_envs.ipynb` uses this throughout.
+
 ## Quadrotor environment
 
 The optional ``envs`` extra also includes a differentiable 3-D quadrotor.  Its

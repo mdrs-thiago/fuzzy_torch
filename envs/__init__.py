@@ -13,6 +13,7 @@ from .core.metrics import (
 from .core.modes import ControlMode
 from .core.plant import Plant
 from .core.scenarios import Disturbance, Scenario, disturbance_rejection, step_response
+from .core.video import Video, compare, record
 from .plants.crane import CranePlant
 from .plants.drone import QuadrotorPlant
 
@@ -23,6 +24,7 @@ __all__ = [
     'ControlMode', 'Plant',
     'Scenario', 'Disturbance', 'step_response', 'disturbance_rejection',
     'CranePlant', 'QuadrotorPlant',
+    'Video', 'compare', 'record',
     'RaceTrack', 'RacingEnv', 'make_track',
 ]
 
