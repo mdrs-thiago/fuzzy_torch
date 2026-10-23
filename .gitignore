@@ -10,3 +10,5 @@ venv/
 examples/race_control/leaderboard.json
 examples/race_control/leaderboard.tmp
 examples/race_control/results.json
+# instructor answer keys: never publish
+examples/homework/solutions/
