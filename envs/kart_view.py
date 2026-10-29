@@ -211,9 +211,6 @@ class RaceDirector:
         if self.window is not None:
             self.window.set_title(f'Fuzzy Kart Race — {self.title}')
         self.panels = {}
-        for name, driver in race.drivers.items():
-            systems = [(getattr(driver, n, None), n.upper()) for n in ('steering', 'throttle')]
-            self.panels[name] = [FuzzyPanel(s, t) for s, t in systems if s is not None]
         self.follow, self.follow_leader = race.names[0], len(race.names) > 1
         self.paused = self.done = self._next = False
         self._image, self._image_of, self._steps = None, None, 0
@@ -313,7 +310,7 @@ class RaceDirector:
         pg.draw.rect(self.surface, PANEL, rect)
         name = self.follow
         _text(self.surface, self.fonts['bold'], f"Fuzzy driver: {name[:24]}", (rect.x + 8, 8), TEXT)
-        panels = self.panels[name]
+        panels = self._panels_of(name)
         if not panels:
             _text(self.surface, self.fonts['small'], "(not a fuzzy driver)", (rect.x + 8, 34), DIM)
             return
@@ -329,6 +326,17 @@ class RaceDirector:
             panel.draw(self.surface, self.fonts, (rect.x, y, rect.w, h), values, rules)
             y += h + 4
             pg.draw.line(self.surface, GRID, (rect.x + 8, y - 3), (rect.right - 8, y - 3))
+
+    def _panels_of(self, name: str) -> list:
+        """The driver's panels, rebuilt when its systems change (a laptop that
+        reloaded its rules for this race may send them after the race started)."""
+        driver = self.race.drivers[name]
+        systems = tuple(getattr(driver, n, None) for n in ('steering', 'throttle'))
+        cached = self.panels.get(name)
+        if cached is None or cached[0] != tuple(map(id, systems)):
+            panels = [FuzzyPanel(s, t) for s, t in zip(systems, ('STEERING', 'THROTTLE')) if s is not None]
+            self.panels[name] = cached = (tuple(map(id, systems)), panels)
+        return cached[1]
 
     def _map(self, standings, rect):
         pg = _pygame()

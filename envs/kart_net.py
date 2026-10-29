@@ -81,9 +81,10 @@ class RemoteDriver:
     them; they are only drawn, never used to drive.
     """
 
-    def __init__(self, hub: 'KartHub', name: str, sock: socket.socket, timeout: float):
+    def __init__(self, hub: 'KartHub', name: str, sock: socket.socket, lock: threading.Lock,
+                 timeout: float):
         self.hub, self.name, self.timeout = hub, name, timeout
-        self._sock, self._lock = sock, threading.Lock()
+        self._sock, self._lock = sock, lock
         self.connected = True
         self.steering = self.throttle = None
         self._action = np.zeros(2, np.float32)
@@ -173,8 +174,7 @@ class KartHub:
             sock.close()
             return
         name = ' '.join(hello['name'].split())
-        driver = RemoteDriver(self, name, sock, self.timeout)
-        driver._lock = lock
+        driver = RemoteDriver(self, name, sock, lock, self.timeout)
         if hello.get('spec') is not None:
             driver.set_spec(hello['spec'])
         with self._lock:
