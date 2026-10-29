@@ -1,0 +1,104 @@
+{
+  "description": "SuperTuxKart starter: Mamdani steering with look-ahead, TSK throttle",
+  "steering": {
+    "inputs": {
+      "cross_track_error": {
+        "range": [-1.5, 1.5],
+        "terms": {
+          "right": ["trap", -1.5, -1.5, -0.7, 0],
+          "centre": ["tri", -0.7, 0, 0.7],
+          "left": ["trap", 0, 0.7, 1.5, 1.5]
+        }
+      },
+      "heading_error": {
+        "range": [-1.6, 1.6],
+        "terms": {
+          "right": ["trap", -1.6, -1.6, -0.1, 0],
+          "centre": ["tri", -0.1, 0, 0.1],
+          "left": ["trap", 0, 0.1, 1.6, 1.6]
+        }
+      },
+      "lookahead_curvature": {
+        "range": [-0.6, 0.6],
+        "terms": {
+          "right": ["trap", -0.6, -0.6, -0.19, 0],
+          "straight": ["tri", -0.19, 0, 0.19],
+          "left": ["trap", 0, 0.19, 0.6, 0.6]
+        }
+      }
+    },
+    "output": {
+      "range": [-1, 1],
+      "terms": {
+        "hard_right": ["tri", -1, -1, -0.78],
+        "right": ["tri", -0.78, -0.39, 0],
+        "none": ["tri", -0.39, 0, 0.39],
+        "left": ["tri", 0, 0.39, 0.78],
+        "hard_left": ["tri", 0.78, 1, 1]
+      }
+    },
+    "rules": [
+      {"if": {"cross_track_error": "right", "heading_error": "right", "lookahead_curvature": "right"}, "then": "right"},
+      {"if": {"cross_track_error": "right", "heading_error": "right", "lookahead_curvature": "straight"}, "then": "none"},
+      {"if": {"cross_track_error": "right", "heading_error": "right", "lookahead_curvature": "left"}, "then": "left"},
+      {"if": {"cross_track_error": "right", "heading_error": "centre", "lookahead_curvature": "right"}, "then": "none"},
+      {"if": {"cross_track_error": "right", "heading_error": "centre", "lookahead_curvature": "straight"}, "then": "left"},
+      {"if": {"cross_track_error": "right", "heading_error": "centre", "lookahead_curvature": "left"}, "then": "hard_left"},
+      {"if": {"cross_track_error": "right", "heading_error": "left", "lookahead_curvature": "right"}, "then": "left"},
+      {"if": {"cross_track_error": "right", "heading_error": "left", "lookahead_curvature": "straight"}, "then": "hard_left"},
+      {"if": {"cross_track_error": "right", "heading_error": "left", "lookahead_curvature": "left"}, "then": "hard_left"},
+      {"if": {"cross_track_error": "centre", "heading_error": "right", "lookahead_curvature": "right"}, "then": "hard_right"},
+      {"if": {"cross_track_error": "centre", "heading_error": "right", "lookahead_curvature": "straight"}, "then": "right"},
+      {"if": {"cross_track_error": "centre", "heading_error": "right", "lookahead_curvature": "left"}, "then": "none"},
+      {"if": {"cross_track_error": "centre", "heading_error": "centre", "lookahead_curvature": "right"}, "then": "right"},
+      {"if": {"cross_track_error": "centre", "heading_error": "centre", "lookahead_curvature": "straight"}, "then": "none"},
+      {"if": {"cross_track_error": "centre", "heading_error": "centre", "lookahead_curvature": "left"}, "then": "left"},
+      {"if": {"cross_track_error": "centre", "heading_error": "left", "lookahead_curvature": "right"}, "then": "none"},
+      {"if": {"cross_track_error": "centre", "heading_error": "left", "lookahead_curvature": "straight"}, "then": "left"},
+      {"if": {"cross_track_error": "centre", "heading_error": "left", "lookahead_curvature": "left"}, "then": "hard_left"},
+      {"if": {"cross_track_error": "left", "heading_error": "right", "lookahead_curvature": "right"}, "then": "hard_right"},
+      {"if": {"cross_track_error": "left", "heading_error": "right", "lookahead_curvature": "straight"}, "then": "hard_right"},
+      {"if": {"cross_track_error": "left", "heading_error": "right", "lookahead_curvature": "left"}, "then": "right"},
+      {"if": {"cross_track_error": "left", "heading_error": "centre", "lookahead_curvature": "right"}, "then": "hard_right"},
+      {"if": {"cross_track_error": "left", "heading_error": "centre", "lookahead_curvature": "straight"}, "then": "right"},
+      {"if": {"cross_track_error": "left", "heading_error": "centre", "lookahead_curvature": "left"}, "then": "none"},
+      {"if": {"cross_track_error": "left", "heading_error": "left", "lookahead_curvature": "right"}, "then": "right"},
+      {"if": {"cross_track_error": "left", "heading_error": "left", "lookahead_curvature": "straight"}, "then": "none"},
+      {"if": {"cross_track_error": "left", "heading_error": "left", "lookahead_curvature": "left"}, "then": "left"}
+    ]
+  },
+  "throttle": {
+    "inputs": {
+      "curve": {
+        "range": [0, 0.6],
+        "terms": {
+          "straight": ["tri", 0, 0, 0.19],
+          "medium": ["tri", 0, 0.19, 0.46],
+          "tight": ["trap", 0.19, 0.46, 0.6, 0.6]
+        }
+      },
+      "speed": {
+        "range": [0, 4.5],
+        "terms": {
+          "slow": ["tri", 0, 0, 3.18],
+          "medium": ["tri", 0, 3.18, 3.4],
+          "fast": ["trap", 3.18, 3.4, 4.5, 4.5]
+        }
+      }
+    },
+    "output": {
+      "range": [-1, 1]
+    },
+    "rules": [
+      {"if": {"curve": "straight", "speed": "slow"}, "then": 1.0},
+      {"if": {"curve": "straight", "speed": "medium"}, "then": 1.0},
+      {"if": {"curve": "straight", "speed": "fast"}, "then": 1.0},
+      {"if": {"curve": "medium", "speed": "slow"}, "then": 1.0},
+      {"if": {"curve": "medium", "speed": "medium"}, "then": 0.72},
+      {"if": {"curve": "medium", "speed": "fast"}, "then": 0.13},
+      {"if": {"curve": "tight", "speed": "slow"}, "then": 0.72},
+      {"if": {"curve": "tight", "speed": "medium"}, "then": 0.13},
+      {"if": {"curve": "tight", "speed": "fast"}, "then": 0.13}
+    ]
+  }
+}

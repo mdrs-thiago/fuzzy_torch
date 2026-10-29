@@ -375,6 +375,9 @@ python examples/supertuxkart_demo.py my_driver.json --track lighthouse --live
 python examples/supertuxkart_demo.py --gif out/race.gif
 ```
 
+`examples/race_control/kart_starter.json` is a driver tuned for SuperTuxKart, and
+[`kart_guide.md`](examples/race_control/kart_guide.md) is the guide for students.
+
 pystk2 runs one game per process. It starts either headless or with graphics, and
 holds one race at a time, so render in a fresh process (a notebook kernel included).
 

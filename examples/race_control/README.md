@@ -146,6 +146,7 @@ pip install -e '.[kart]'
 python examples/kart_party.py --store examples/race_control/leaderboard.json
 ```
 
+Students start from `kart_starter.json` and read [`kart_guide.md`](kart_guide.md).
 See "Racing in SuperTuxKart" in the main README.
 
 ## From PyTorch to the leaderboard

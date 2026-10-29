@@ -143,3 +143,17 @@ def test_kart_party_takes_each_students_latest_valid_submission(tmp_path):
         {'name': 'Bruno', 'submitted_at': '2026-10-29T10:06:00', 'status': 'error', 'spec': 'bad'},
     ]))
     assert kart_party.from_store(store) == {'ana souza': 'new', 'Bruno': 'ok'}
+
+
+def test_the_kart_starter_driver_finishes_against_ai():
+    starter = EXAMPLE.parent / 'kart_starter.json'
+    driver = ConfigRaceDriver(json.loads(starter.read_text()), max_rules=125, max_inputs=3, max_terms=7)
+    env = SuperTuxKartEnv('zengarden', opponents=3)
+    obs, _ = env.reset(seed=0)
+    while True:
+        obs, _, terminated, truncated, info = env.step(driver(obs))
+        if terminated or truncated:
+            break
+    # 47.9 s when tuned; a regression in the features or the env would show here.
+    assert terminated and info['race_time'] < 55.0 and info['rescues'] == 0
+    env.close()
