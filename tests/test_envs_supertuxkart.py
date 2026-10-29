@@ -127,3 +127,19 @@ def test_window_process_shows_frames():
         assert window.running
     finally:
         window.close()
+
+
+def test_kart_party_takes_each_students_latest_valid_submission(tmp_path):
+    import importlib.util
+    path = pathlib.Path(__file__).resolve().parents[1] / 'examples/kart_party.py'
+    spec = importlib.util.spec_from_file_location('kart_party', path)
+    kart_party = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(kart_party)
+    store = tmp_path / 'leaderboard.json'
+    store.write_text(json.dumps([
+        {'name': 'Ana Souza', 'submitted_at': '2026-10-29T10:00:00', 'status': 'done', 'spec': 'old'},
+        {'name': 'ana  souza', 'submitted_at': '2026-10-29T10:05:00', 'status': 'done', 'spec': 'new'},
+        {'name': 'Bruno', 'submitted_at': '2026-10-29T10:01:00', 'status': 'done', 'spec': 'ok'},
+        {'name': 'Bruno', 'submitted_at': '2026-10-29T10:06:00', 'status': 'error', 'spec': 'bad'},
+    ]))
+    assert kart_party.from_store(store) == {'ana souza': 'new', 'Bruno': 'ok'}

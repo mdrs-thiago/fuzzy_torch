@@ -40,13 +40,18 @@ LIMITS = {'max_rules': 125, 'max_inputs': 3, 'max_terms': 7}
 
 
 def from_store(path: pathlib.Path) -> dict:
-    """Each name's most recent valid submission in a Race Control results file."""
-    specs = {}
+    """Each student's most recent valid submission in a Race Control results file.
+
+    Names match as Race Control matches them, ignoring case and spacing, so
+    'Ana Souza' and 'ana  souza' are one student, shown under the latest spelling.
+    """
+    latest = {}
     entries = sorted(json.loads(path.read_text()), key=lambda e: e['submitted_at'])
     for entry in entries:
         if entry.get('status') != 'error':
-            specs[' '.join(entry['name'].split())] = entry['spec']
-    return specs
+            name = ' '.join(entry['name'].split())
+            latest[name.casefold()] = (name, entry['spec'])
+    return dict(latest.values())
 
 
 def load_drivers(args) -> dict:
