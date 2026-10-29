@@ -52,6 +52,9 @@ except ImportError as exc:  # pragma: no cover
 TRACKS = ('lighthouse', 'zengarden', 'hacienda', 'cornfield_crossing', 'snowmountain',
           'scotland')
 
+#: A kart off the road this many times ``rescue_after`` in a row is rescued too.
+LOST_AFTER = 2.5
+
 #: Speed and road half-width of the lecture circuits, which ``units='grand_prix'`` maps to.
 _GP_TOP_SPEED, _GP_HALF_WIDTH = 4.0, 1.0
 
@@ -182,7 +185,7 @@ class _KartTracker:
         #: Metres per feature unit of length, and metres per second per unit of speed.
         self.L = track.reference_half_width / _GP_HALF_WIDTH if units == 'grand_prix' else 1.0
         self.V = top_speed / _GP_TOP_SPEED if units == 'grand_prix' else 1.0
-        self.progress, self.rescues, self._stuck = 0.0, 0, 0
+        self.progress, self.rescues, self._stuck, self._off = 0.0, 0, 0, 0
         self._last = None
 
     def begin(self, kart):
@@ -195,8 +198,10 @@ class _KartTracker:
         if extra_actions:
             command.drift, command.nitro, command.fire = (bool(a > 0) for a in action[2:5])
         self._stuck = self._stuck + 1 if abs(float(kart.speed)) < 0.5 else 0
-        if self.rescue_after is not None and self._stuck * self.dt >= self.rescue_after:
-            command.rescue, self._stuck = True, 0
+        # A kart knocked off the road can wander the grass at speed and never stall.
+        lost = self._off * self.dt >= LOST_AFTER * self.rescue_after if self.rescue_after else False
+        if self.rescue_after is not None and (self._stuck * self.dt >= self.rescue_after or lost):
+            command.rescue, self._stuck, self._off = True, 0, 0
             self.rescues += 1
         return command
 
@@ -233,8 +238,9 @@ class _KartTracker:
                         forward / V, yaw_rate * L / V, curvature * L,
                         np.clip(self.progress / (self.laps * self.track.length), 0.0, 1.05)],
                        np.float32)
-        info = {'cross_track_error_m': cte, 'off_track': abs(cte) > half_width or not kart.is_on_road,
-                'speed_mps': forward}
+        off_track = abs(cte) > half_width or not kart.is_on_road
+        self._off = self._off + 1 if off_track else 0
+        info = {'cross_track_error_m': cte, 'off_track': off_track, 'speed_mps': forward}
         return obs, info
 
 
@@ -290,8 +296,9 @@ class SuperTuxKartEnv(gym.Env):
     The episode ends when the kart finishes the race, or is truncated at ``max_time``.
     Driving off the road is allowed, as in the game (grass is just slow); ``info``
     reports it, and ``terminate_off_track=True`` ends the episode there instead, like
-    the lecture time trial.  A kart stuck for ``rescue_after`` seconds is put back on
-    the road by the game's rescue bird; set it to ``None`` to disable that.
+    the lecture time trial.  A kart stuck for ``rescue_after`` seconds, or off the
+    road for 2.5 times that, is put back on the road by the game's rescue bird; set
+    it to ``None`` to disable that.
     """
     metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 20}
     feature_names = ('cross_track_error', 'heading_error', 'speed', 'yaw_rate',
