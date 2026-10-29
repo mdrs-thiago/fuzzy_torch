@@ -29,11 +29,24 @@ def race_inputs(obs) -> dict:
     return values
 
 
+def system_inputs(system: FuzzyModule, values: dict) -> dict:
+    """The inputs of one system, saturated at the edges of each variable's range.
+
+    Beyond its range a variable's terms are usually all zero, so no rule would fire:
+    a kart pushed far off the road would stop steering instead of steering back.
+    """
+    inputs = {}
+    for name in system.input_order:
+        var = system.input_variables[name]
+        inputs[name] = torch.tensor(min(max(values[name], var.range_min), var.range_max))
+    return inputs
+
+
 def _act(steering: FuzzyModule, throttle: FuzzyModule, obs) -> np.ndarray:
     values = race_inputs(obs)
     with torch.no_grad():
-        steer = steering({n: torch.tensor(values[n]) for n in steering.input_order})
-        gas = throttle({n: torch.tensor(values[n]) for n in throttle.input_order})
+        steer = steering(system_inputs(steering, values))
+        gas = throttle(system_inputs(throttle, values))
     return np.array([float(gas), float(steer)], dtype=np.float32)
 
 

@@ -25,7 +25,7 @@ __all__ = [
     'Scenario', 'Disturbance', 'step_response', 'disturbance_rejection',
     'CranePlant', 'QuadrotorPlant',
     'Video', 'compare', 'record',
-    'RaceTrack', 'RacingEnv', 'make_track',
+    'RaceTrack', 'RacingEnv', 'make_track', 'SuperTuxKartEnv', 'KartRace',
 ]
 
 
@@ -39,4 +39,7 @@ def __getattr__(name):
     if name in ('RaceTrack', 'RacingEnv', 'make_track'):
         from .racing import RaceTrack, RacingEnv, make_track
         return {'RaceTrack': RaceTrack, 'RacingEnv': RacingEnv, 'make_track': make_track}[name]
+    if name in ('SuperTuxKartEnv', 'KartRace'):
+        from . import supertuxkart
+        return getattr(supertuxkart, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

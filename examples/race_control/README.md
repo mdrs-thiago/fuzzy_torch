@@ -79,6 +79,9 @@ Each system picks up to three of these, by name:
 | `curve` | `abs(lookahead_curvature)`: how sharp the next bend is | 0 – 1.5 |
 | `progress` | fraction of the lap completed | 0 – 1 |
 
+An input beyond its `range` is held at the nearest end of the range, so a kart
+pushed far off the road keeps firing its outermost terms and steers back.
+
 ### A fuzzy system
 
 ```json
@@ -132,6 +135,18 @@ differ, for example TSK steering with Mamdani throttle.
 
 Mistakes are reported with the path to the problem, for example
 `steering.rules[2].if.heading_error: unknown term 'leftt' (available: right, centre, left)`.
+
+## Race day in SuperTuxKart
+
+The same JSON drivers race each other in SuperTuxKart, the open-source kart game,
+with the fuzzy logic of the followed kart drawn live next to the race:
+
+```bash
+pip install -e '.[kart]'
+python examples/kart_party.py --store examples/race_control/leaderboard.json
+```
+
+See "Racing in SuperTuxKart" in the main README.
 
 ## From PyTorch to the leaderboard
 

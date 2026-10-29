@@ -338,6 +338,71 @@ For a lecture, [`examples/race_control/`](examples/race_control/README.md) runs 
 leaderboard: students submit a name plus a JSON driver from the browser, and every
 entry is raced on all three circuits, ranked, and replayable.
 
+### Racing in SuperTuxKart
+
+[SuperTuxKart](https://supertuxkart.net), the open-source kart racer, runs as a
+Gymnasium environment through its Python bindings (`pystk2`): real 3-D tracks, AI
+opponents, items, drifting and nitro. `SuperTuxKartEnv` uses the same interface as
+`RacingEnv`, with the same six features and the same `[throttle, steering]` action, so
+any fuzzy driver, including a Race Control JSON driver, races in it unchanged:
+
+```python
+from fuzzy_torch.envs import SuperTuxKartEnv
+from fuzzy_torch.envs.controllers import FuzzyRaceDriver
+
+env = SuperTuxKartEnv('zengarden', opponents=3, laps=1)
+driver = FuzzyRaceDriver()
+obs, info = env.reset(seed=0)
+while True:
+    obs, reward, terminated, truncated, info = env.step(driver(obs))
+    if terminated or truncated:
+        break
+print(info['race_time'], info['position'], '/', info['num_karts'])
+```
+
+The features are computed from the game state, which pystk2 exposes in full: the kart's
+position, heading, velocity and yaw rate, and the track's centre line with its road
+width. With the default `units='grand_prix'` they are rescaled to the lecture circuits'
+scale: a cross-track error of ±1 is the road edge, and the kart's top speed reads 4.
+Use `units='si'` for raw metres and seconds. The game reports more in `info`
+(`position`, `lap`, `off_track`, `rescues`). `extra_actions=True` adds drift, nitro and
+item buttons.
+
+```bash
+pip install -e '.[kart]'           # first start downloads the game assets (~700 MB)
+python examples/supertuxkart_demo.py                                 # 3 tracks, headless
+python examples/supertuxkart_demo.py my_driver.json --track lighthouse --live
+python examples/supertuxkart_demo.py --gif out/race.gif
+```
+
+pystk2 runs one game per process. It starts either headless or with graphics, and
+holds one race at a time, so render in a fresh process (a notebook kernel included).
+
+#### A class race, with the fuzzy logic on screen
+
+`KartRace` puts several fuzzy drivers in one race, each in its own kart, and
+`examples/kart_party.py` shows it on a projector. The window has the followed kart's
+chase camera. Next to it, the driver's fuzzy systems update every step: each input
+on its membership functions, the strongest rules and their firing strengths, and the
+output set with the crisp action. A track map and live standings sit underneath.
+
+```bash
+# one driver against AI karts
+python examples/kart_party.py --driver examples/race_control/example_driver.json --ai 3
+
+# the whole class: each student's latest Race Control submission
+python examples/kart_party.py --store examples/race_control/leaderboard.json --track zengarden
+
+# or a folder of JSON drivers named after the students; --headless is a dry run
+python examples/kart_party.py --folder submissions/ --headless
+```
+
+SuperTuxKart renders at most 8 chase cameras per race, so a larger class races in
+heats of up to 8, and the 8 fastest overall meet in a final. In the window:
+`Left`/`Right` (or a click on the standings) follows another driver, `L` follows
+the leader, `Space` pauses, `Enter` starts the next race, and `Esc` quits. A driver
+that raises an error coasts and is flagged, so one broken file cannot stop the race.
+
 ## Student fuzzy-control workspace
 
 The three-case-study starter workspace lives in

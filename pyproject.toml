@@ -48,6 +48,12 @@ viz = [
     "mujoco>=3.2",
     "matplotlib>=3.7",
 ]
+# SuperTuxKart races. pystk2 (GPLv3) is the open-source kart game itself; it is an
+# optional, separately installed dependency and downloads ~700 MB of assets on first use.
+kart = [
+    "torch-fis[envs]",
+    "pysupertuxkart2>=0.7.4",
+]
 # RL baselines are opt-in: stable-baselines3 is heavy and only needed to reproduce
 # the RL comparison, not to use the environments.
 rl = [
