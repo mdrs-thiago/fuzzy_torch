@@ -9,6 +9,9 @@
     # a folder of JSON drivers, one per student (file name = student name)
     python examples/kart_party.py --folder submissions/ --laps 2 --ai 2
 
+    # students drive from their laptops (examples/kart_join.py), plus any JSON drivers
+    python examples/kart_party.py --join 9000 --ai 2
+
 SuperTuxKart renders at most 8 chase cameras per race, so a class larger than
 ``--heat-size`` (8) races in heats; the fastest 8 overall then meet in a final.
 
@@ -22,7 +25,11 @@ import argparse
 import importlib
 import json
 import pathlib
+import socket
 import sys
+import threading
+import time
+from typing import Optional
 
 if __package__ is None and 'fuzzy_torch' not in sys.modules:
     try:
@@ -33,6 +40,7 @@ if __package__ is None and 'fuzzy_torch' not in sys.modules:
 from fuzzy_torch.config import ConfigError
 from fuzzy_torch.envs import KartRace
 from fuzzy_torch.envs.controllers import ConfigRaceDriver, FuzzyRaceDriver
+from fuzzy_torch.envs.kart_net import KartHub
 from fuzzy_torch.envs.kart_view import RaceDirector
 
 # The same limits as the Race Control server, since the specs come from students.
@@ -74,6 +82,30 @@ def load_drivers(args) -> dict:
     return drivers
 
 
+def lan_address() -> str:
+    """This machine's address on the local network, for students to connect to."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        try:
+            probe.connect(('192.0.2.1', 9))          # TEST-NET: nothing is sent
+            return probe.getsockname()[0]
+        except OSError:
+            return socket.gethostbyname(socket.gethostname())
+
+
+def lobby(hub: KartHub, seconds: Optional[float]):
+    """Wait for students to join: until Enter, or for ``seconds``."""
+    done = threading.Event()
+    if seconds is None:
+        print('Waiting for students. Press Enter to start the race.')
+        threading.Thread(target=lambda: (input(), done.set()), daemon=True).start()
+    shown, start = [], time.monotonic()
+    while not done.is_set() and (seconds is None or time.monotonic() - start < seconds):
+        if hub.names != shown:
+            shown = hub.names
+            print(f"  {len(shown)} joined: {', '.join(shown)}")
+        done.wait(0.5)
+
+
 def ranking_key(row):
     """Finishers by time, then the rest by distance covered."""
     finished = row['race_time'] is not None
@@ -108,9 +140,25 @@ def main():
     ap.add_argument('--screenshot', help='headless: race --steps steps of the first race, '
                                          'save the window to this PNG and stop')
     ap.add_argument('--steps', type=int, default=600)
+    ap.add_argument('--join', type=int, metavar='PORT',
+                    help='let students join from their laptops on this port (classroom network)')
+    ap.add_argument('--lobby', type=float, metavar='SECONDS',
+                    help='with --join: start after this many seconds instead of on Enter')
     args = ap.parse_args()
 
-    drivers = load_drivers(args)
+    hub = None
+    if args.join:
+        hub = KartHub('0.0.0.0', args.join)
+        print(f"Students join with:\n  python examples/kart_join.py {lan_address()}:{args.join} "
+              f"--name \"Your Name\" --driver my_driver.json")
+        lobby(hub, args.lobby)
+    drivers = {} if hub and not (args.store or args.folder or args.driver or args.baseline) \
+        else load_drivers(args)
+    if hub:
+        # A student on a laptop drives live, in place of any file under the same name.
+        drivers.update({name: hub.drivers[name] for name in hub.names})
+    if not drivers:
+        raise SystemExit('no drivers: nobody joined, and no JSON drivers were given')
     names = list(drivers)
     print(f"{len(names)} driver(s): {', '.join(names)}")
     size = max(1, min(args.heat_size, KartRace.max_cameras))
@@ -126,11 +174,16 @@ def main():
             title, entrants = races.pop(0)
             race = KartRace({n: drivers[n] for n in entrants}, args.track, laps=args.laps,
                             ai_karts=args.ai, difficulty=args.difficulty, render=True)
+            if hub:
+                hub.announce(title, args.track, entrants)
             standings = director.run(race, seed=args.seed, title=f"{title} · {args.track}",
-                                     max_steps=args.steps if args.screenshot else None)
+                                     max_steps=args.steps if args.screenshot else None,
+                                     on_step=hub.track_status if hub else None)
             race.close()
             if standings is None:
                 break
+            if hub:
+                hub.results(title, standings)
             print_standings(title, standings)
             if args.screenshot:
                 director.screenshot(args.screenshot)
@@ -142,6 +195,8 @@ def main():
                 races.append(('Final', finalists))
     finally:
         director.close()
+        if hub:
+            hub.close()
 
 
 if __name__ == '__main__':

@@ -456,9 +456,10 @@ class KartRace:
     in heats of up to that many.
 
     A driver is any ``action = driver(observation)`` callable with ``SuperTuxKartEnv``'s
-    observation and ``[throttle, steering]`` action.  A driver that raises or returns a
-    non-finite action coasts for that step, and the error is kept in ``errors``, so one
-    broken submission cannot stop the race.
+    observation and ``[throttle, steering]`` action (including a student's laptop, see
+    :mod:`~fuzzy_torch.envs.kart_net`).  A driver that raises or returns a non-finite
+    action coasts for that step, and ``errors`` holds the error until it acts normally
+    again, so one broken submission cannot stop the race.
     """
     #: SuperTuxKart renders up to this many player cameras per race.
     max_cameras = 8
@@ -536,6 +537,8 @@ class KartRace:
             action = np.asarray(self.drivers[name](self.observations[name]), np.float32).reshape(-1)[:2]
             if action.shape != (2,) or not np.isfinite(action).all():
                 raise ValueError(f"non-finite or malformed action {action.tolist()}")
+            # `errors` holds current trouble only: a laptop that lagged a moment recovers.
+            self.errors.pop(name, None)
             return np.clip(action, -1.0, 1.0)
         except Exception as exc:                      # noqa: BLE001 -- a student's driver
             self.errors[name] = f"t={self.time:.1f}s: {exc}"

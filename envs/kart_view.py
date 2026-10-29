@@ -10,7 +10,7 @@ Keys: ``Left``/``Right`` previous/next driver, ``L`` follow the leader, ``Space`
 pause, ``F`` toggle real-time pacing, ``Enter`` next race (once finished), ``Esc`` quit.
 """
 import math
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -197,10 +197,12 @@ class RaceDirector:
         self._rows: List[Tuple] = []
 
     # -- loop --------------------------------------------------------------------------
-    def run(self, race, seed: int = 0, title: str = '', max_steps: Optional[int] = None):
+    def run(self, race, seed: int = 0, title: str = '', max_steps: Optional[int] = None,
+            on_step: Optional[Callable] = None):
         """Race ``race`` to the end and return its standings, or None if the window closed.
 
         In a window, the finished race stays on screen until ``Enter`` is pressed.
+        ``on_step(race)`` is called after every step.
         """
         if not race.render:
             raise ValueError("create the KartRace with render=True")
@@ -220,6 +222,8 @@ class RaceDirector:
         while self.running and not self._next:
             if not self.paused and not self.done:
                 self.done = race.step()
+                if on_step is not None:
+                    on_step(race)
                 steps += 1
                 self._steps += 1
             self.draw()
