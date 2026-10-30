@@ -1,6 +1,9 @@
 """Join the class SuperTuxKart race from your laptop, driving with your fuzzy driver.
 
-    python examples/kart_join.py 192.168.0.10:9000 --name "Ana Souza" --driver my_driver.json
+    python examples/kart_join.py https://abcd-1234.ngrok-free.app --code K7QX2 --name "Ana Souza" --driver my_driver.json
+    python examples/kart_join.py 192.168.0.10:9000 --code K7QX2 --name "Ana Souza" --driver my_driver.json
+
+The address and the join code are shown on the race screen.
 
 Your laptop runs your driver; the instructor's machine runs the race and shows it on
 the projector.  Your window shows your own fuzzy systems firing as your kart races.
@@ -11,7 +14,7 @@ Only fuzzy_torch is needed here (``pip install 'torch-fis[envs]'``), not
 SuperTuxKart.  Add ``--no-window`` to drive without a window.
 
 To drive with your own Python controller instead of a JSON file, call
-``fuzzy_torch.envs.kart_net.join(server, name, my_controller).run()``, where
+``fuzzy_torch.envs.kart_net.join(server, name, code, my_controller).run()``, where
 ``my_controller(observation)`` returns ``[throttle, steering]``.
 """
 import argparse
@@ -84,7 +87,7 @@ def window(connection, telemetry: Telemetry):
     while not telemetry.ended:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                connection.sock.close()
+                connection.close()
                 return
         with telemetry.lock:
             driver, status, obs, action, info = (telemetry.driver, telemetry.status, telemetry.obs,
@@ -120,7 +123,8 @@ def window(connection, telemetry: Telemetry):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('server', help="the race's address, host:port (the instructor shows it)")
+    ap.add_argument('server', help="the race's address, as shown on the race screen")
+    ap.add_argument('--code', required=True, help='the join code shown on the race screen')
     ap.add_argument('--name', required=True, help='your name on the standings')
     ap.add_argument('--driver', required=True, type=pathlib.Path, help='your JSON driver')
     ap.add_argument('--no-window', action='store_true', help='drive without a window')
@@ -137,7 +141,10 @@ def main():
             print(f"{args.driver} has a problem, racing the previous version: {exc}")
         return tuple(current)
 
-    connection = join(args.server, args.name, driver, spec, reload=reload)
+    try:
+        connection = join(args.server, args.name, args.code, driver, spec, reload=reload)
+    except (ConnectionError, OSError) as exc:
+        raise SystemExit(f"Could not join the race at {args.server}: {exc}")
     print(f"Joined as {connection.name}. Waiting for the race to start...")
     telemetry = Telemetry(driver)
 

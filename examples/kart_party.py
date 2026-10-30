@@ -11,6 +11,8 @@
 
     # students drive from their laptops (examples/kart_join.py), plus any JSON drivers
     python examples/kart_party.py --join 9000 --ai 2
+    # ...from anywhere, through a tunnel: run `ngrok http 9000` and pass its address
+    python examples/kart_party.py --join 9000 --public-url https://abcd-1234.ngrok-free.app
 
 SuperTuxKart renders at most 8 chase cameras per race, so a class larger than
 ``--heat-size`` (8) races in heats; the fastest 8 overall then meet in a final.
@@ -141,15 +143,20 @@ def main():
                                          'save the window to this PNG and stop')
     ap.add_argument('--steps', type=int, default=600)
     ap.add_argument('--join', type=int, metavar='PORT',
-                    help='let students join from their laptops on this port (classroom network)')
+                    help='let students join from their laptops on this port')
+    ap.add_argument('--code', help='with --join: the join code (default: a random one)')
+    ap.add_argument('--public-url', help='with --join: the address students use, e.g. the '
+                                         "https:// address printed by 'ngrok http PORT'")
     ap.add_argument('--lobby', type=float, metavar='SECONDS',
                     help='with --join: start after this many seconds instead of on Enter')
     args = ap.parse_args()
 
     hub = None
     if args.join:
-        hub = KartHub('0.0.0.0', args.join)
-        print(f"Students join with:\n  python examples/kart_join.py {lan_address()}:{args.join} "
+        hub = KartHub('0.0.0.0', args.join, code=args.code)
+        address = args.public_url or f"{lan_address()}:{args.join}"
+        banner = f"Join: {address}   code {hub.code}"
+        print(f"Students join with:\n  python examples/kart_join.py {address} --code {hub.code} "
               f"--name \"Your Name\" --driver my_driver.json")
         lobby(hub, args.lobby)
     drivers = {} if hub and not (args.store or args.folder or args.driver or args.baseline) \
@@ -168,6 +175,8 @@ def main():
     races = [(f"Heat {i + 1}/{count}" if count > 1 else 'Race', heat) for i, heat in enumerate(heats)]
 
     director = RaceDirector(realtime=not args.fast, headless=bool(args.screenshot or args.headless))
+    if hub:
+        director.banner = banner
     results = []
     try:
         while races:

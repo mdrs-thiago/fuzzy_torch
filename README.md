@@ -409,26 +409,36 @@ that raises an error coasts and is flagged, so one broken file cannot stop the r
 #### Students driving from their laptops
 
 With `--join PORT`, students drive their own karts from their laptops. The race still
-runs on the projector machine. Each laptop runs the student's driver and gets its
-kart's observations over the classroom network:
+runs on your machine. Each laptop runs the student's driver and gets its kart's
+observations over WebSockets. A laptop needs the **join code**, which is shown over
+the race camera with the address, so students can read both from a screen share.
 
 ```bash
-# projector machine: wait for laptops, Enter starts the race
+# your machine; the code is random unless you pass --code
 python examples/kart_party.py --join 9000 --ai 2
 # each laptop (needs only torch-fis[envs], not SuperTuxKart)
-python examples/kart_join.py 192.168.0.10:9000 --name "Ana Souza" --driver my_driver.json
+python examples/kart_join.py 192.168.0.10:9000 --code K7QX2 --name "Ana Souza" --driver my_driver.json
+```
+
+Students outside your network can join through an HTTP tunnel. WebSockets pass
+through ngrok's free plan, which has no raw TCP:
+
+```bash
+ngrok http 9000                      # prints https://abcd-1234.ngrok-free.app
+python examples/kart_party.py --join 9000 --public-url https://abcd-1234.ngrok-free.app
+python examples/kart_join.py https://abcd-1234.ngrok-free.app --code K7QX2 --name "Ana Souza" --driver my_driver.json
 ```
 
 The laptop window shows the student's own fuzzy systems firing as the kart races.
 The driver file is read again before each race, so students can change their rules
 between heats. A Python controller can join too:
-`fuzzy_torch.envs.kart_net.join(server, name, controller).run()`.
+`fuzzy_torch.envs.kart_net.join(server, name, code, controller).run()`.
 
 The server never waits for a laptop. It uses the newest action each laptop has sent,
-so a remote kart steers one step (50 ms) late, and a laptop silent for a second
-coasts until it answers again. Use a classroom network: anyone who can reach the port
-can join. Because laptops run their own code, the server cannot check that it is a
-fuzzy controller; for a graded race, use JSON submissions.
+so a remote kart steers one step (50 ms) late plus the network round trip. Up to
+about 200 ms of round trip, races are only slightly slower. A laptop silent for a
+second coasts until it answers again. Because laptops run their own code, the server
+cannot check that it is a fuzzy controller; for a graded race, use JSON submissions.
 
 ## Student fuzzy-control workspace
 

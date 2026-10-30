@@ -75,8 +75,10 @@ Your instructor runs the race on the projector. You take part in one of two ways
 - **Drive from your laptop**, if your instructor opens the race for laptops:
 
   ```bash
-  python examples/kart_join.py <address shown by the instructor> --name "Your Name" --driver my_driver.json
+  python examples/kart_join.py <address> --code <code> --name "Your Name" --driver my_driver.json
   ```
+
+  The address and the code are shown at the top of the race screen.
 
   Your window shows your own rules firing while your kart races. Your file is read
   again before each race, so you can change your rules between heats. A laptop that

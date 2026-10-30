@@ -194,6 +194,9 @@ class RaceDirector:
         self.clock = pg.time.Clock()
         self.running = True
         self.race = None
+        #: A line shown over the camera, e.g. how to join; on a stream everyone sees it.
+        self.banner = ''
+
         self._rows: List[Tuple] = []
 
     # -- loop --------------------------------------------------------------------------
@@ -279,6 +282,11 @@ class RaceDirector:
         else:
             surface.blit(self._image, (0, 0))
         _text(surface, self.fonts['bold'], self.title, (12, CAMERA[1] - 96), ACCENT)
+        if self.banner:
+            strip = pg.Surface((CAMERA[0], 26), pg.SRCALPHA)
+            strip.fill((10, 12, 16, 210))
+            surface.blit(strip, (0, 0))
+            _text(surface, self.fonts['bold'], self.banner, (12, 4), TEXT)
         self._driver_badge(standings)
         self._panels()
         self._map(standings, pg.Rect(0, CAMERA[1], 250, HEIGHT - CAMERA[1]))

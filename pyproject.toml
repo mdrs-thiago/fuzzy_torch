@@ -37,6 +37,7 @@ envs = [
     "numpy>=1.21",
     "pygame-ce>=2.5",
     "pillow>=9",          # GIF encoding for envs.record()
+    "websockets>=13",     # racing SuperTuxKart from students' laptops (pure Python)
 ]
 # Plotting of membership functions, variables, inference and surfaces.
 plot = ["matplotlib>=3.7"]

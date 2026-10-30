@@ -1,30 +1,35 @@
 """Students drive SuperTuxKart karts from their own laptops.
 
-The race runs on one machine (the projector's); each student's laptop runs its own
-controller.  :class:`KartHub` accepts laptops over the network, and gives each one a
+The race runs on one machine (the instructor's); each student's laptop runs its own
+controller.  :class:`KartHub` accepts laptops over WebSockets, and gives each one a
 :class:`RemoteDriver`: an ordinary ``action = driver(observation)`` callable for
 :class:`~fuzzy_torch.envs.supertuxkart.KartRace`, so remote and local drivers race
 together.  On the laptop, :func:`join` connects a driver to the hub.
 
-The protocol is newline-delimited JSON over TCP, one message per line:
+WebSockets travel over plain HTTP, so the hub works on a classroom network and
+through an HTTP tunnel such as ``ngrok http 9000`` (whose free plan does not offer
+raw TCP).  Laptops must give the hub's **join code**, which the instructor shows
+on screen, so finding the address is not enough to join.
 
-* laptop -> hub: ``{"type": "hello", "name": ..., "spec": {...} | null}`` once, then
-  ``{"type": "action", "step": k, "action": [throttle, steering]}`` per observation,
-  and ``{"type": "spec", "spec": ...}`` when the laptop reloads its driver file.
+Each WebSocket message is one JSON object:
+
+* laptop -> hub: ``{"type": "hello", "name": ..., "code": ..., "spec": {...} | null}``
+  once, then ``{"type": "action", "step": k, "action": [throttle, steering]}`` per
+  observation, and ``{"type": "spec", "spec": ...}`` when it reloads its driver file.
 * hub -> laptop: ``welcome``, then for each race ``start`` (or ``wait`` when the
   student is not in that heat), an ``obs`` per step, and ``end`` with the standings.
 
 The hub never waits for a laptop: each step it sends the observation and uses the
-newest action received so far, so a remote kart steers one step (50 ms) late.  A
-laptop that has not answered for ``timeout`` seconds coasts until it answers again,
-so a slow or disconnected laptop cannot hold up the race.
+newest action received so far, so a remote kart steers at least one step (50 ms)
+late, plus the network round trip.  A laptop that has not answered for ``timeout``
+seconds coasts until it answers again, so a slow or disconnected laptop cannot hold
+up the race.
 
 Remote code runs on the student's machine, so the hub cannot check that it is a
-fuzzy controller; races that must be fair should use JSON drivers instead.  Only
-share the hub on a network you trust (a classroom LAN): anyone who can reach the
-port can join.
+fuzzy controller; races that must be fair should use JSON drivers instead.
 """
 import json
+import secrets
 import socket
 import threading
 import time
@@ -33,43 +38,60 @@ from typing import Callable, Dict, List, Optional
 import numpy as np
 
 #: Bumped when the protocol changes, so old clients get a clear error.
-PROTOCOL = 1
-MAX_LINE = 256 * 1024
+PROTOCOL = 2
+MAX_MESSAGE = 256 * 1024
 MAX_NAME = 24
+#: Join codes avoid look-alike characters (0/O, 1/I/L), since they are read off a screen.
+CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 
 
-def _send(sock: socket.socket, message: dict, lock: threading.Lock) -> bool:
-    data = (json.dumps(message, separators=(',', ':')) + '\n').encode()
+def _websockets():
     try:
-        with lock:
-            sock.sendall(data)
-        return True
-    except OSError:
-        return False
+        import websockets  # noqa: F401
+        from websockets.sync import client, server
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError("racing from laptops needs websockets; install with: "
+                          "pip install 'torch-fis[envs]'") from exc
+    return client, server
 
 
-def _lines(sock: socket.socket):
-    """Yield the JSON messages arriving on ``sock`` until it closes."""
-    buffer = b''
+def new_code(length: int = 5) -> str:
+    return ''.join(secrets.choice(CODE_ALPHABET) for _ in range(length))
+
+
+def ws_url(server: str) -> str:
+    """The WebSocket URL for what a student types: ``host:port``, an ngrok
+    ``https://...`` address, or a ``ws://``/``wss://`` URL."""
+    server = server.strip().rstrip('/')
+    for http, ws in (('https://', 'wss://'), ('http://', 'ws://')):
+        if server.startswith(http):
+            return ws + server[len(http):]
+    if server.startswith(('ws://', 'wss://')):
+        return server
+    return 'ws://' + server
+
+
+def _no_delay(connection):
+    """Send small messages at once rather than batching them (Nagle's algorithm)."""
+    try:
+        connection.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    except (AttributeError, OSError):
+        pass
+
+
+def _messages(connection):
+    """Yield the JSON objects arriving on ``connection`` until it closes."""
     while True:
         try:
-            chunk = sock.recv(65536)
-        except OSError:
+            raw = connection.recv()
+        except Exception:                             # noqa: BLE001 -- closed or broken
             return
-        if not chunk:
-            return
-        buffer += chunk
-        while b'\n' in buffer:
-            line, buffer = buffer.split(b'\n', 1)
-            if line.strip():
-                try:
-                    message = json.loads(line)
-                except ValueError:
-                    continue
-                if isinstance(message, dict):
-                    yield message
-        if len(buffer) > MAX_LINE:
-            return
+        try:
+            message = json.loads(raw)
+        except ValueError:
+            continue
+        if isinstance(message, dict):
+            yield message
 
 
 class RemoteDriver:
@@ -81,10 +103,9 @@ class RemoteDriver:
     them; they are only drawn, never used to drive.
     """
 
-    def __init__(self, hub: 'KartHub', name: str, sock: socket.socket, lock: threading.Lock,
-                 timeout: float):
+    def __init__(self, hub: 'KartHub', name: str, connection, timeout: float):
         self.hub, self.name, self.timeout = hub, name, timeout
-        self._sock, self._lock = sock, lock
+        self._connection, self._lock = connection, threading.Lock()
         self.connected = True
         self.steering = self.throttle = None
         self._action = np.zeros(2, np.float32)
@@ -102,7 +123,10 @@ class RemoteDriver:
     def send(self, message: dict) -> bool:
         if not self.connected:
             return False
-        if not _send(self._sock, message, self._lock):
+        try:
+            with self._lock:
+                self._connection.send(json.dumps(message, separators=(',', ':')))
+        except Exception:                             # noqa: BLE001 -- closed or broken
             self.connected = False
         return self.connected
 
@@ -133,19 +157,24 @@ class RemoteDriver:
 class KartHub:
     """Accepts students' laptops; one :class:`RemoteDriver` per connected name.
 
-    Use ``host='0.0.0.0'`` to accept laptops on the classroom network.
+    ``host='0.0.0.0'`` accepts laptops on the local network; behind a tunnel
+    (``ngrok http PORT``) the default ``127.0.0.1`` is enough.  ``code`` is the join
+    code laptops must give; by default a random one, in :attr:`code`.
     """
 
-    def __init__(self, host: str = '0.0.0.0', port: int = 9000, *, timeout: float = 1.0):
+    def __init__(self, host: str = '127.0.0.1', port: int = 9000, *, code: Optional[str] = None,
+                 timeout: float = 1.0):
+        _, server = _websockets()
         self.timeout = timeout
+        self.code = (code or new_code()).upper()
         self.drivers: Dict[str, RemoteDriver] = {}
         #: Live race facts per name (position, lap, ...), added to each ``obs`` message.
         self.status: Dict[str, dict] = {}
         self._lock = threading.Lock()
-        self._server = socket.create_server((host, port), reuse_port=False)
-        self.address = self._server.getsockname()[:2]
-        self._closed = False
-        threading.Thread(target=self._accept, daemon=True).start()
+        self._server = server.serve(self._serve, host, port, max_size=MAX_MESSAGE,
+                                    compression=None)
+        self.address = self._server.socket.getsockname()[:2]
+        threading.Thread(target=self._server.serve_forever, daemon=True).start()
 
     @property
     def names(self) -> List[str]:
@@ -153,55 +182,60 @@ class KartHub:
         with self._lock:
             return [n for n, d in self.drivers.items() if d.connected]
 
-    def _accept(self):
-        while not self._closed:
-            try:
-                sock, _ = self._server.accept()
-            except OSError:
-                return
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            threading.Thread(target=self._serve, args=(sock,), daemon=True).start()
+    def _refuse(self, connection, error: str):
+        try:
+            connection.send(json.dumps({'type': 'error', 'error': error}))
+            connection.close()
+        except Exception:                             # noqa: BLE001
+            pass
 
-    def _serve(self, sock: socket.socket):
-        messages = _lines(sock)
-        lock = threading.Lock()
-        sock.settimeout(10.0)
-        hello = next(messages, None)
-        sock.settimeout(None)
+    def _serve(self, connection):
+        _no_delay(connection)
+        try:
+            hello = json.loads(connection.recv(timeout=10))
+        except Exception:                             # noqa: BLE001 -- silent or not JSON
+            hello = None
         error = self._check_hello(hello)
         if error:
-            _send(sock, {'type': 'error', 'error': error}, lock)
-            sock.close()
+            self._refuse(connection, error)
             return
         name = ' '.join(hello['name'].split())
-        driver = RemoteDriver(self, name, sock, lock, self.timeout)
+        driver = RemoteDriver(self, name, connection, self.timeout)
         if hello.get('spec') is not None:
             driver.set_spec(hello['spec'])
         with self._lock:
             # Names match ignoring case and spacing, as on the Race Control leaderboard.
             same = [n for n in self.drivers if n.casefold() == name.casefold()]
             if any(self.drivers[n].connected for n in same):
-                _send(sock, {'type': 'error', 'error': f'{name!r} is already connected'}, lock)
-                sock.close()
-                return
-            for n in same:
-                del self.drivers[n]               # a student reconnecting
-            self.drivers[name] = driver
+                taken = f'{name!r} is already connected'
+            else:
+                taken = None
+                for n in same:
+                    del self.drivers[n]               # a student reconnecting
+                self.drivers[name] = driver
+        if taken:
+            self._refuse(connection, taken)
+            return
         driver.send({'type': 'welcome', 'name': name, 'protocol': PROTOCOL})
-        for message in messages:
+        for message in _messages(connection):
             kind = message.get('type')
             if kind == 'action':
-                driver._receive(int(message.get('step', 0)), message.get('action'))
+                try:
+                    driver._receive(int(message.get('step', 0)), message.get('action'))
+                except (TypeError, ValueError):
+                    pass
             elif kind == 'spec':
                 driver.set_spec(message.get('spec'))
         driver.connected = False
-        sock.close()
 
     def _check_hello(self, hello) -> Optional[str]:
-        if not hello or hello.get('type') != 'hello':
+        if not isinstance(hello, dict) or hello.get('type') != 'hello':
             return 'expected a hello message'
         if hello.get('protocol') != PROTOCOL:
             return f'this race uses protocol {PROTOCOL}; update fuzzy_torch on your laptop'
+        code = str(hello.get('code') or '').strip().upper()
+        if not secrets.compare_digest(code.encode(), self.code.encode()):
+            return 'wrong join code: use the code shown on the race screen'
         name = hello.get('name')
         if not isinstance(name, str) or not name.strip() or len(name.strip()) > MAX_NAME:
             return f'please give a name of 1 to {MAX_NAME} characters'
@@ -227,34 +261,42 @@ class KartHub:
                        for r in race.standings() if r['name'] in self.drivers}
 
     def close(self):
-        self._closed = True
-        self._server.close()
+        self._server.shutdown()
         for driver in list(self.drivers.values()):
             driver.connected = False
-            try:
-                driver._sock.close()
-            except OSError:
-                pass
 
 
 class Join:
     """A laptop's connection to a :class:`KartHub` (see :func:`join`)."""
 
-    def __init__(self, server: str, name: str, driver: Callable, spec: Optional[dict] = None,
-                 reload: Optional[Callable[[], tuple]] = None):
-        host, _, port = server.rpartition(':')
-        self.sock = socket.create_connection((host or 'localhost', int(port)), timeout=10)
-        self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.sock.settimeout(None)
+    def __init__(self, server: str, name: str, code: str, driver: Callable,
+                 spec: Optional[dict] = None, reload: Optional[Callable[[], tuple]] = None):
+        client, _ = _websockets()
+        self.url = ws_url(server)
+        # ngrok's free plan shows browsers a warning page first; this header skips it.
+        # Entered by hand: the connection outlives this method, and closing it is
+        # close()'s job.  (websockets 17 warns when connect() is used without `with`.)
+        self.connection = client.connect(self.url, open_timeout=15, max_size=MAX_MESSAGE,
+                                         compression=None,
+                                         additional_headers={'ngrok-skip-browser-warning': '1'}
+                                         ).__enter__()
+        _no_delay(self.connection)
         self._lock = threading.Lock()
         self.driver, self.reload = driver, reload
-        self.messages = _lines(self.sock)
-        _send(self.sock, {'type': 'hello', 'name': name, 'spec': spec, 'protocol': PROTOCOL}, self._lock)
+        self._send({'type': 'hello', 'name': name, 'code': code, 'spec': spec, 'protocol': PROTOCOL})
+        self.messages = _messages(self.connection)
         welcome = next(self.messages, None)
         if not welcome or welcome.get('type') != 'welcome':
-            self.sock.close()
+            self.close()
             raise ConnectionError((welcome or {}).get('error', 'the race server closed the connection'))
         self.name = welcome['name']
+
+    def _send(self, message: dict):
+        try:
+            with self._lock:
+                self.connection.send(json.dumps(message, separators=(',', ':')))
+        except Exception:                             # noqa: BLE001 -- the run loop notices
+            pass
 
     def run(self, on_message: Optional[Callable[[dict, Optional[np.ndarray]], bool]] = None):
         """Answer observations until the server closes; ``on_message(message, action)``
@@ -263,7 +305,7 @@ class Join:
             action = None
             if message.get('type') == 'start' and self.reload is not None:
                 self.driver, spec = self.reload()
-                _send(self.sock, {'type': 'spec', 'spec': spec}, self._lock)
+                self._send({'type': 'spec', 'spec': spec})
                 if hasattr(self.driver, 'reset'):
                     self.driver.reset()
             elif message.get('type') == 'obs':
@@ -273,17 +315,26 @@ class Join:
                 except Exception as exc:              # noqa: BLE001 -- keep driving
                     print(f"your driver raised: {exc}")
                     action = np.zeros(2, np.float32)
-                _send(self.sock, {'type': 'action', 'step': message['step'],
-                                  'action': [float(a) for a in action]}, self._lock)
+                self._send({'type': 'action', 'step': message['step'],
+                            'action': [float(a) for a in action]})
             if on_message is not None and on_message(message, action) is False:
                 break
-        self.sock.close()
+        self.close()
+
+    def close(self):
+        try:
+            self.connection.close()
+        except Exception:                             # noqa: BLE001
+            pass
 
 
-def join(server: str, name: str, driver: Callable, spec: Optional[dict] = None, **kwargs) -> Join:
-    """Connect ``driver`` (``action = driver(observation)``) to a race at ``host:port``.
+def join(server: str, name: str, code: str, driver: Callable, spec: Optional[dict] = None,
+         **kwargs) -> Join:
+    """Connect ``driver`` (``action = driver(observation)``) to a race.
 
-    Pass the driver's JSON ``spec`` to have its fuzzy systems drawn on the projector.
-    Returns the connection; call ``.run()`` on it to drive.
+    ``server`` is what the instructor shows: ``host:port`` on a local network, or the
+    tunnel's ``https://...`` address.  ``code`` is the race's join code.  Pass the
+    driver's JSON ``spec`` to have its fuzzy systems drawn on the race screen.  Returns
+    the connection; call ``.run()`` on it to drive.
     """
-    return Join(server, name, driver, spec, **kwargs)
+    return Join(server, name, code, driver, spec, **kwargs)
