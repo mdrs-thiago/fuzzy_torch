@@ -30,6 +30,9 @@ A rule's ``then`` selects the inference mode:
   the order the inputs are listed;
 - ``{"order": p, "coefficients": [...], "normalize": bool}`` -> TSK of any order.
 
+A rule may also carry ``"weight"``, a number in [0, 1] (default 1) that scales its
+firing strength.
+
 Optional top-level keys: ``and`` (``min``/``product``), ``implication``
 (``min``/``product``), ``aggregation`` (``max``/``probsum``), ``defuzz``
 (``centroid``/``bisector``/``mom``), ``resolution`` and ``default`` (the value
@@ -223,9 +226,10 @@ def build_system(spec, *, allowed_inputs=None, output_name: Optional[str] = None
     for i, rule_spec in enumerate(rules_spec):
         rpath = f"{prefix}rules[{i}]"
         rule_spec = _mapping(rule_spec, rpath)
-        extra = set(rule_spec) - {'if', 'then'}
+        extra = set(rule_spec) - {'if', 'then', 'weight'}
         if extra:
-            _fail(rpath, f"unknown key(s) {sorted(extra)}; a rule has only 'if' and 'then'")
+            _fail(rpath, f"unknown key(s) {sorted(extra)}; a rule has only 'if', 'then' "
+                         "and an optional 'weight'")
         antecedent_spec = _mapping(rule_spec.get('if'), f"{rpath}.if")
         if not antecedent_spec:
             _fail(f"{rpath}.if", "needs at least one condition")
@@ -249,7 +253,10 @@ def build_system(spec, *, allowed_inputs=None, output_name: Optional[str] = None
             consequent = (output, then)
         else:
             consequent = _consequent(then, len(inputs), f"{rpath}.then")
-        rules.append(FuzzyRule(antecedent, consequent, t_norm=t_norm))
+        weight = _number(rule_spec.get('weight', 1.0), f"{rpath}.weight")
+        if not 0.0 <= weight <= 1.0:
+            _fail(f"{rpath}.weight", f"must be in [0, 1], got {weight}")
+        rules.append(FuzzyRule(antecedent, consequent, t_norm=t_norm, weight=weight))
 
     default = spec.get('default')
     no_rule_value = float('nan') if default is None else _number(default, f"{prefix}default")
@@ -332,6 +339,8 @@ def system_to_config(system: FuzzyModule, digits: int = 6) -> dict:
                                  'normalize': cons.normalize}
         else:
             entry['then'] = rule.consequent[1]
+        if rule.weight != 1.0:
+            entry['weight'] = _round(rule.weight, digits)
         spec['rules'].append(entry)
 
     if not tsk:

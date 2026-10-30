@@ -187,6 +187,24 @@ The mode is inferred from the rules, so `FuzzyModule` handles both. `MamdaniSyst
 `TSKSystem` are the same class with an assertion, for when you want the intent stated in code.
 A rule base may not mix the two kinds of consequent.
 
+## Rule weights
+
+Every rule carries a weight in [0, 1] (default 1), as in MATLAB's Fuzzy Logic Toolbox.
+The system multiplies the rule's firing strength by it before implication (Mamdani) or
+the weighted average (TSK):
+
+```python
+rule = FuzzyRule([(service, 'Good'), (food, 'Delicious')], (tip, 'High'), weight=0.5)
+rule.weight = 0.8                              # validated on assignment
+
+fis.get_rule_activations(x)                    # weighted: what inference uses
+fis.get_rule_activations(x, weighted=False)    # raw degrees of fulfilment
+```
+
+The weight is a buffer, not a parameter: it moves with `.to(device)` and is saved in
+`state_dict()`, but the optimizer does not train it. In a JSON spec it is an optional
+`"weight"` key on a rule, and `system_to_config` writes it back when it is not 1.
+
 ## Configuration
 
 ```python

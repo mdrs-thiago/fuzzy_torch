@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 from typing import Dict, List, Sequence, Tuple, Union
@@ -22,12 +24,18 @@ class FuzzyRule(nn.Module):
     membership-function parameters: ``rule.parameters()``, ``rule.to(device)`` and
     ``rule.state_dict()`` all work on a standalone rule, not just inside a
     :class:`~fuzzy_torch.system.FuzzyModule`.
+
+    A rule may carry a weight in [0, 1] (default 1). Calling the rule returns the
+    unweighted degree of fulfilment; the owning system multiplies it by the weight
+    before implication (Mamdani) or the weighted average (TSK), as MATLAB's Fuzzy
+    Logic Toolbox does.
     """
 
     def __init__(self,
                  antecedent: Union[Proposition, Sequence[Proposition]],
                  consequent: Union[Proposition, Consequent],
-                 t_norm: TNorm = None):
+                 t_norm: TNorm = None,
+                 weight: float = 1.0):
         """
         Args:
             antecedent: ``(FuzzyVariable, term_name)`` or a sequence of them,
@@ -35,8 +43,12 @@ class FuzzyRule(nn.Module):
             consequent: ``(FuzzyVariable, term_name)`` for a Mamdani rule, or a
                 :class:`~fuzzy_torch.consequent.Consequent` for a TSK rule.
             t_norm: T-Norm used for the AND connections. Defaults to :class:`Min`.
+            weight: rule weight in [0, 1], scaling the firing strength.
         """
         super().__init__()
+        # A buffer, so the weight follows .to(device) and lands in state_dict().
+        self.register_buffer('_weight', torch.tensor(1.0))
+        self.weight = weight
 
         if isinstance(antecedent, tuple) and len(antecedent) == 2 \
                 and isinstance(antecedent[0], FuzzyVariable):
@@ -99,6 +111,20 @@ class FuzzyRule(nn.Module):
     def is_tsk(self) -> bool:
         return self.consequent_fn is not None
 
+    @property
+    def weight(self) -> float:
+        """Rule weight in [0, 1]; the system scales this rule's firing strength by it."""
+        return self._weight.item()
+
+    @weight.setter
+    def weight(self, value: float) -> None:
+        value = float(value)
+        # Above 1 a Mamdani rule would clip its output set higher than the set itself.
+        if not (math.isfinite(value) and 0.0 <= value <= 1.0):
+            raise ValueError(f"rule weight must be in [0, 1], got {value}")
+        with torch.no_grad():
+            self._weight.fill_(value)
+
     def forward(self, inputs: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
         Firing strength of the rule.
@@ -127,4 +153,6 @@ class FuzzyRule(nn.Module):
             cons_str = repr(self.consequent_fn)
         else:
             cons_str = f"({self._cons_var.name} IS '{self._cons_term}')"
-        return f"IF {ant_str} THEN {cons_str}"
+        weight = self.weight
+        weight_str = f" (weight {weight:.4g})" if weight != 1.0 else ""
+        return f"IF {ant_str} THEN {cons_str}{weight_str}"

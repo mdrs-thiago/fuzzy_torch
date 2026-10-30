@@ -192,15 +192,28 @@ class FuzzyModule(nn.Module):
 
     # ---------------------------------------------------------------- forward
 
-    def get_rule_activations(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
-        """Firing strength of every rule, shape ``(batch, n_rules)``."""
-        prepared, batch_size, _ = self._prepare_inputs(x)
-        return self._activations(prepared, batch_size)
+    def get_rule_activations(self, x: Dict[str, torch.Tensor],
+                             weighted: bool = True) -> torch.Tensor:
+        """Firing strength of every rule, shape ``(batch, n_rules)``.
 
-    def _activations(self, prepared: Dict[str, torch.Tensor], batch_size: int) -> torch.Tensor:
+        ``weighted=True`` (default) returns the strengths inference actually uses,
+        each scaled by its rule's weight; ``False`` gives the raw degrees of fulfilment.
+        """
+        prepared, batch_size, _ = self._prepare_inputs(x)
+        return self._activations(prepared, batch_size, weighted=weighted)
+
+    def rule_weights(self) -> torch.Tensor:
+        """Weight of every rule, shape ``(n_rules,)``."""
+        if len(self.rules) == 0:
+            return torch.zeros(0, device=self._device())
+        return torch.stack([rule._weight for rule in self.rules])
+
+    def _activations(self, prepared: Dict[str, torch.Tensor], batch_size: int,
+                     weighted: bool = True) -> torch.Tensor:
         if len(self.rules) == 0:
             return torch.zeros((batch_size, 0), device=self._device())
-        return torch.stack([rule(prepared) for rule in self.rules], dim=1)
+        strengths = torch.stack([rule(prepared) for rule in self.rules], dim=1)
+        return strengths * self.rule_weights() if weighted else strengths
 
     def _consequent_matrix(self) -> torch.Tensor:
         """Consequent MFs evaluated on the defuzzification grid, shape ``(n_rules, resolution)``."""
