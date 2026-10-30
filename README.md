@@ -375,6 +375,8 @@ python examples/supertuxkart_demo.py my_driver.json --track lighthouse --live
 python examples/supertuxkart_demo.py --gif out/race.gif
 ```
 
+`examples/kart_tune.py my_driver.json` tunes a driver's numbers (breakpoints and TSK
+outputs, never its rules) on solo races, with `--lag` to match a laptop's network.
 `examples/race_control/kart_starter.json` is a driver tuned for SuperTuxKart, and
 [`kart_guide.md`](examples/race_control/kart_guide.md) is the guide for students.
 

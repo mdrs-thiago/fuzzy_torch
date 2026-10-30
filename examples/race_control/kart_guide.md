@@ -66,6 +66,23 @@ while True:
 print(info['race_time'], info['position'], info['rescues'])
 ```
 
+## Tuning your driver automatically
+
+Once your rules make sense, let the computer fine-tune the numbers:
+
+```bash
+python examples/kart_tune.py my_driver.json            # writes my_driver_tuned.json
+python examples/kart_tune.py my_driver.json --lag 3    # if you will race from your laptop
+```
+
+It only moves membership-function breakpoints and TSK rule outputs. Your inputs,
+terms and rules stay as you wrote them, so you can still explain every rule. It
+races solo on three tracks, keeps a change only when the total time drops, then
+tests the result on three other tracks. Being slower on those means it fitted the
+tuning tracks rather than learning to drive: tune on more tracks (`--tracks ...`).
+A run takes 5 to 10 minutes. Tuning can't fix a missing rule: look at what your
+driver does wrong first, then tune.
+
 ## On race day
 
 Your instructor runs the race on the projector. You take part in one of two ways:
