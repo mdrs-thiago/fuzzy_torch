@@ -396,7 +396,7 @@ class SuperTuxKartEnv(gym.Env):
                 'progress': max(0.0, tracker.progress), 'cross_track_error': float(obs[0]),
                 'off_track': off_track, 'speed': float(obs[2]), 'position': int(kart.position),
                 'num_karts': 1 + self.opponents, 'lap': max(0, int(kart.finished_laps)) + (not finished),
-                'rescues': tracker.rescues, **extra}
+                'rescues': tracker.rescues, 'xy': _ground(kart)[0].tolist(), **extra}
         if self.render_mode == 'human':
             self.render()
         terminated = finished or (off_track and self.terminate_off_track)

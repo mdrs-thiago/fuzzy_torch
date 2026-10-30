@@ -383,6 +383,12 @@ outputs, never its rules) on solo races, with `--lag` to match a laptop's networ
 pystk2 runs one game per process. It starts either headless or with graphics, and
 holds one race at a time, so render in a fresh process (a notebook kernel included).
 
+[`examples/notebooks/03_supertuxkart.ipynb`](examples/notebooks/03_supertuxkart.ipynb)
+walks a student through all of it, and runs on Google Colab: read the starter
+driver, race it, look inside a decision, change it, tune it, and join the class race
+from the notebook. It races headless and records videos in a separate process, so a
+machine that cannot start the game's graphics still runs every other cell.
+
 #### A class race, with the fuzzy logic on screen
 
 `KartRace` puts several fuzzy drivers in one race, each in its own kart, and

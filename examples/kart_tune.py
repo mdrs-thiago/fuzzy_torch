@@ -209,8 +209,12 @@ def main():
         print("on the check tracks (not tuned on):")
         for track, b, a in zip(args.check, before, after):
             print(f"  {track:20s} {b:6.1f} s -> {a:6.1f} s")
-        verdict = ('it learnt to drive, not just the tuning tracks' if sum(after) < sum(before)
-                   else 'slower here: it fitted the tuning tracks; tune on more tracks')
+        if best == spec:
+            verdict = 'unchanged: the search found nothing faster (try a larger --budget)'
+        elif sum(after) < sum(before):
+            verdict = 'it learnt to drive, not just the tuning tracks'
+        else:
+            verdict = 'slower here: it fitted the tuning tracks; tune on more tracks'
         print(f"  total {sum(before):.1f} s -> {sum(after):.1f} s: {verdict}")
 
 

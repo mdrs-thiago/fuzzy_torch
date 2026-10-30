@@ -43,6 +43,7 @@ def main():
     ap.add_argument('--laps', type=int, default=1)
     ap.add_argument('--live', action='store_true', help='watch the race in a window')
     ap.add_argument('--gif', help='record the (first) race to this .gif or .webp file')
+    ap.add_argument('--every', type=int, default=2, help='with --gif: keep one frame in this many')
     args = ap.parse_args()
 
     driver = ConfigRaceDriver(json.loads(pathlib.Path(args.driver).read_text())) if args.driver \
@@ -52,7 +53,7 @@ def main():
         env = SuperTuxKartEnv(track, opponents=args.opponents, difficulty=args.difficulty,
                               laps=args.laps, render_mode=mode)
         if args.gif and i == 0:
-            video = record(env, driver, every=2)
+            video = record(env, driver, every=args.every)
             info = video.info
             print(f'wrote {video.save(args.gif)}')
         else:

@@ -29,6 +29,7 @@ Remote code runs on the student's machine, so the hub cannot check that it is a
 fuzzy controller; races that must be fair should use JSON drivers instead.
 """
 import json
+import math
 import secrets
 import socket
 import threading
@@ -226,6 +227,8 @@ class KartHub:
                     pass
             elif kind == 'spec':
                 driver.set_spec(message.get('spec'))
+            elif kind == 'ping':
+                driver.send({'type': 'pong', 't': message.get('t')})
         driver.connected = False
 
     def _check_hello(self, hello) -> Optional[str]:
@@ -284,12 +287,40 @@ class Join:
         self._lock = threading.Lock()
         self.driver, self.reload = driver, reload
         self._send({'type': 'hello', 'name': name, 'code': code, 'spec': spec, 'protocol': PROTOCOL})
-        self.messages = _messages(self.connection)
-        welcome = next(self.messages, None)
+        self._incoming = _messages(self.connection)
+        self._pending: List[dict] = []
+        welcome = next(self._incoming, None)
         if not welcome or welcome.get('type') != 'welcome':
             self.close()
             raise ConnectionError((welcome or {}).get('error', 'the race server closed the connection'))
         self.name = welcome['name']
+
+    @property
+    def messages(self):
+        """Messages from the hub, starting with any that arrived during :meth:`round_trip`."""
+        while self._pending:
+            yield self._pending.pop(0)
+        yield from self._incoming
+
+    def round_trip(self, pings: int = 5) -> float:
+        """The median round trip to the hub in milliseconds.  Call before :meth:`run`."""
+        times = []
+        for _ in range(pings):
+            sent = time.perf_counter()
+            self._send({'type': 'ping', 't': sent})
+            for message in self._incoming:
+                if message.get('type') == 'pong' and message.get('t') == sent:
+                    times.append(1000 * (time.perf_counter() - sent))
+                    break
+                self._pending.append(message)       # e.g. a race starting meanwhile
+            else:
+                raise ConnectionError('the race server closed the connection')
+        return float(np.median(times))
+
+    def suggested_lag(self, round_trip_ms: float) -> int:
+        """Steps of 50 ms to tune with (``kart_tune.py --lag``) for this round trip:
+        the hub's own step, plus the round trip rounded up to whole steps."""
+        return 1 + math.ceil(round_trip_ms / 50.0)
 
     def _send(self, message: dict):
         try:

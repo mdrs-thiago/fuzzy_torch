@@ -103,3 +103,11 @@ def test_addresses_students_type_become_websocket_urls():
     assert ws_url('https://abcd.ngrok-free.app/') == 'wss://abcd.ngrok-free.app'
     assert ws_url('http://localhost:9000') == 'ws://localhost:9000'
     assert ws_url('wss://example.org/race') == 'wss://example.org/race'
+
+
+def test_a_laptop_can_measure_its_round_trip(hub):
+    connection = join(_address(hub), 'Ana', CODE, lambda obs: np.zeros(2))
+    ms = connection.round_trip(pings=3)
+    assert 0 <= ms < 500
+    assert connection.suggested_lag(0) == 1 and connection.suggested_lag(120) == 4
+    connection.close()

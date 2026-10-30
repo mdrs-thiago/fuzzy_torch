@@ -104,7 +104,7 @@ def lobby(hub: KartHub, seconds: Optional[float]):
     while not done.is_set() and (seconds is None or time.monotonic() - start < seconds):
         if hub.names != shown:
             shown = hub.names
-            print(f"  {len(shown)} joined: {', '.join(shown)}")
+            print(f"  {len(shown)} joined: {', '.join(shown)}", flush=True)
         done.wait(0.5)
 
 

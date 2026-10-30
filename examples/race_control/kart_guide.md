@@ -5,6 +5,10 @@ the **throttle**. On race day it drives a kart in
 [SuperTuxKart](https://supertuxkart.net), the open-source kart game, against your
 classmates and AI karts. The projector shows your rules firing as your kart races.
 
+The quickest start is the notebook
+[`03_supertuxkart.ipynb`](../notebooks/03_supertuxkart.ipynb), which runs on Google
+Colab: it takes you from the starter driver to the class race, with nothing to install.
+
 Your driver is a JSON file in the Race Control format (see this folder's
 [README](README.md)). Start from `kart_starter.json`, a working driver tuned for
 SuperTuxKart, and improve it.
