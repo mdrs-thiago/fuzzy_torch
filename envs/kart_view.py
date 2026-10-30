@@ -265,7 +265,10 @@ class RaceDirector:
         race, surface = self.race, self.surface
         standings = race.standings()
         if self.follow_leader:
-            self.follow = next((r['name'] for r in standings if not r['ai']), self.follow)
+            # The leading student still racing: a finished kart has nothing left to show.
+            racing = [r['name'] for r in standings if not r['ai'] and r['race_time'] is None]
+            finished = [r['name'] for r in standings if not r['ai']]
+            self.follow = (racing or finished or [self.follow])[0]
         surface.fill(BG)
         # Fetching frames reads every camera back from the GPU (~5 ms each), so the
         # video refreshes every `video_every` steps; the fuzzy panels update every step.
